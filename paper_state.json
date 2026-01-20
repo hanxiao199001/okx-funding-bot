@@ -1,0 +1,14 @@
+{
+  "balance": 50.0,
+  "position": "SHORT",
+  "entry_price": 91009.3,
+  "entry_time": "2026-01-20T14:36:34.005128",
+  "trades": [
+    {
+      "action": "OPEN_SHORT",
+      "price": 91009.3,
+      "rate": 0.00965983779305,
+      "time": "2026-01-20T14:36:34.005128"
+    }
+  ]
+}

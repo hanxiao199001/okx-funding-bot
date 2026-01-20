@@ -1,32 +1,50 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""纸面交易机器人 - 简化版"""
+"""纸面交易机器人 - 带状态保存"""
 
 import requests
 from datetime import datetime
+import json
+import os
 
-# 初始资金
-balance = 50.0
-position = None  # None, 'LONG', 'SHORT'
-entry_price = 0
+STATE_FILE = 'paper_state.json'
 
 # 策略参数
-SHORT_THRESHOLD = 0.005  # 0.5%做空
+SHORT_THRESHOLD = 0.005
+EXIT_THRESHOLD = 0.001
+STOP_LOSS = -2.0
+TAKE_PROFIT = 1.5
+
+def load_state():
+    """加载状态"""
+    if os.path.exists(STATE_FILE):
+        with open(STATE_FILE, 'r') as f:
+            return json.load(f)
+    return {
+        'balance': 50.0,
+        'position': None,
+        'entry_price': 0,
+        'entry_time': None,
+        'trades': []
+    }
+
+def save_state(state):
+    """保存状态"""
+    with open(STATE_FILE, 'w') as f:
+        json.dump(state, f, indent=2)
 
 def get_market():
     """获取市场数据"""
-    # 价格
     r1 = requests.get("https://www.okx.com/api/v5/market/ticker?instId=BTC-USDT-SWAP")
     price = float(r1.json()['data'][0]['last'])
     
-    # 资金费率
     r2 = requests.get("https://www.okx.com/api/v5/public/funding-rate?instId=BTC-USDT-SWAP")
     rate = float(r2.json()['data'][0]['fundingRate']) * 100
     
     return price, rate
 
 def main():
-    global position, entry_price, balance
+    state = load_state()
     
     price, rate = get_market()
     
@@ -35,33 +53,57 @@ def main():
     print("="*60)
     print(f"价格: ${price:,.2f}")
     print(f"资金费率: {rate:.4f}%")
-    print(f"余额: ${balance:.2f}")
+    print(f"余额: ${state['balance']:.2f}")
     
-    if position is None:
+    if state['position'] is None:
         # 无仓位 - 检查开仓
         if rate > SHORT_THRESHOLD:
-            position = 'SHORT'
-            entry_price = price
-            print(f"\n🔴 模拟开空")
-            print(f"开仓价: ${entry_price:,.2f}")
+            state['position'] = 'SHORT'
+            state['entry_price'] = price
+            state['entry_time'] = datetime.now().isoformat()
+            
+            print(f"\n🔴 开空仓")
+            print(f"开仓价: ${price:,.2f}")
+            
+            state['trades'].append({
+                'action': 'OPEN_SHORT',
+                'price': price,
+                'rate': rate,
+                'time': state['entry_time']
+            })
+            
+            save_state(state)
         else:
-            print(f"\n🟡 等待信号 (费率需要 > {SHORT_THRESHOLD:.4f}%)")
+            print(f"\n🟡 等待信号 (费率需 > {SHORT_THRESHOLD:.4f}%)")
     
     else:
-        # 有仓位 - 显示盈亏
-        pnl = ((entry_price - price) / entry_price) * 100 - 0.1  # 减手续费
-        print(f"\n【当前持仓】")
-        print(f"方向: {position}")
-        print(f"开仓价: ${entry_price:,.2f}")
-        print(f"盈亏: {pnl:+.2f}%")
+        # 有仓位 - 计算盈亏
+        pnl = ((state['entry_price'] - price) / state['entry_price']) * 100 - 0.1
+        pnl_amount = state['balance'] * 0.3 * (pnl / 100)
         
-        # 检查平仓条件
-        if abs(rate) < 0.001:
-            print(f"\n⚪ 建议平仓 (费率回归)")
-        elif pnl > 1.5:
-            print(f"\n⚪ 建议平仓 (止盈)")
-        elif pnl < -2.0:
-            print(f"\n⚪ 建议平仓 (止损)")
+        print(f"\n【持仓信息】")
+        print(f"方向: {state['position']}")
+        print(f"开仓价: ${state['entry_price']:,.2f}")
+        print(f"当前价: ${price:,.2f}")
+        print(f"盈亏: {pnl:+.2f}% (${pnl_amount:+.2f})")
+        
+        # 检查平仓
+        should_close = False
+        close_reason = ""
+        
+        if abs(rate) < EXIT_THRESHOLD:
+            should_close = True
+            close_reason = "费率回归中性"
+        elif pnl > TAKE_PROFIT:
+            should_close = True
+            close_reason = "达到止盈"
+        elif pnl < STOP_LOSS:
+            should_close = True
+            close_reason = "触发止损"
+        
+        if should_close:
+            print(f"\n⚪ 建议平仓: {close_reason}")
+            print(f"输入 'close' 确认平仓")
         else:
             print(f"\n✅ 继续持有")
     
