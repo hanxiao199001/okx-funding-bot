@@ -1,19 +1,9 @@
-# Python
-__pycache__/
-*.py[cod]
-*$py.class
-venv/
-*.so
-
-# 敏感信息
-okx_trading_bot.py  # 包含API密钥
-paper_trades.json   # 交易记录
+.env
 *.log
-
-# 数据文件（可选，看你是否想上传数据）
-# okx_btc_data.csv
-# hyperliquid_btc_data.csv
-
-# 系统文件
+nohup.out
+__pycache__/
+*.pyc
+venv/
 .DS_Store
-*.swp
+paper_state.json
+live_state.json

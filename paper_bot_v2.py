@@ -11,7 +11,7 @@ import time
 STATE_FILE = 'paper_state.json'
 
 # 策略参数
-SHORT_THRESHOLD = 0.005
+SHORT_THRESHOLD = 0.003
 EXIT_THRESHOLD = 0.001
 STOP_LOSS = -2.0
 TAKE_PROFIT = 1.5

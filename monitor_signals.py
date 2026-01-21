@@ -12,7 +12,7 @@ import time
 
 # 策略参数
 LONG_THRESHOLD = -0.003   # 做多阈值
-SHORT_THRESHOLD = 0.005   # 做空阈值  
+SHORT_THRESHOLD = 0.003   # 做空阈值  
 EXIT_THRESHOLD = 0.001    # 平仓阈值
 
 # 手续费
